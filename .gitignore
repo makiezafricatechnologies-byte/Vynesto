@@ -1,0 +1,13 @@
+# Node Modules
+temp
+*.log
+*.tmp
+node_modules/
+# Build Output
+dist/
+build/
+# Environment Variables
+.env
+# Other development artifacts
+*.out
+*.cache
