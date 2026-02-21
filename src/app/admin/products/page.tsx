@@ -15,9 +15,6 @@ import { Plus, Trash2, Edit2, Loader2, Sparkles, AlertCircle, ShoppingBag, Check
 import { researchProduct } from '@/ai/flows/product-research-flow';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-/**
- * Endless Sliding Image Component for Product Cards
- */
 function ProductImageSlider({ images }: { images: string[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -115,7 +112,7 @@ export default function ProductsPage() {
       let finalImageUrls = [...formData.imageUrls];
 
       if (files.length > 0) {
-        // Parallel sync upload for maximum speed
+        // Parallel sync: upload all images simultaneously
         const uploadPromises = files.map(async (file, index) => {
           const storageRef = ref(storage, `products/${productRef.id}/img_${Date.now()}_${index}`);
           const snapshot = await uploadBytes(storageRef, file);
@@ -167,12 +164,12 @@ export default function ProductsPage() {
           <ShoppingBag className="w-8 h-8 text-primary" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Elite Product Catalog</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Elite Product Catalog</h1>
           <p className="text-muted-foreground">Manage your superapp inventory with AI research and parallel sync.</p>
         </div>
       </div>
 
-      <Card className="border-2 shadow-2xl overflow-hidden">
+      <Card className="border-2 shadow-2xl overflow-hidden rounded-3xl">
         <CardContent className="p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -184,14 +181,14 @@ export default function ProductsPage() {
                     onChange={e => setFormData(p => ({...p, name: e.target.value}))} 
                     placeholder="e.g. Premium Ajab Baking Flour" 
                     required 
-                    className="h-12"
+                    className="h-12 rounded-xl"
                   />
                   <Button 
                     type="button" 
                     variant="secondary" 
                     onClick={handleResearch} 
                     disabled={aiLoading || !formData.name}
-                    className="h-12 px-6"
+                    className="h-12 px-6 rounded-xl"
                   >
                     {aiLoading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
                     AI Research
@@ -201,7 +198,7 @@ export default function ProductsPage() {
               <div className="space-y-2">
                 <Label>Category</Label>
                 <Select value={formData.category} onValueChange={v => setFormData(p => ({...p, category: v}))}>
-                  <SelectTrigger className="h-12">
+                  <SelectTrigger className="h-12 rounded-xl">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -216,19 +213,19 @@ export default function ProductsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="space-y-2">
                 <Label>Was Price (KSh)</Label>
-                <Input type="number" value={formData.wasPrice} onChange={e => setFormData(p => ({...p, wasPrice: e.target.value}))} placeholder="250" className="h-11" />
+                <Input type="number" value={formData.wasPrice} onChange={e => setFormData(p => ({...p, wasPrice: e.target.value}))} placeholder="250" className="h-11 rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label>Now Price (KSh)</Label>
-                <Input type="number" value={formData.nowPrice} onChange={e => setFormData(p => ({...p, nowPrice: e.target.value}))} placeholder="100" required className="h-11" />
+                <Input type="number" value={formData.nowPrice} onChange={e => setFormData(p => ({...p, nowPrice: e.target.value}))} placeholder="100" required className="h-11 rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label>Discount %</Label>
-                <Input type="number" value={formData.discountPercentage} onChange={e => setFormData(p => ({...p, discountPercentage: e.target.value}))} placeholder="15" className="h-11" />
+                <Input type="number" value={formData.discountPercentage} onChange={e => setFormData(p => ({...p, discountPercentage: e.target.value}))} placeholder="15" className="h-11 rounded-xl" />
               </div>
               <div className="space-y-2">
                 <Label>Promo Code</Label>
-                <Input value={formData.promoCode} onChange={e => setFormData(p => ({...p, promoCode: e.target.value}))} placeholder="FREWSIE10" className="h-11" />
+                <Input value={formData.promoCode} onChange={e => setFormData(p => ({...p, promoCode: e.target.value}))} placeholder="FREWSIE10" className="h-11 rounded-xl" />
               </div>
             </div>
 
@@ -254,7 +251,7 @@ export default function ProductsPage() {
                 Professional Description <span className="text-xs font-normal text-muted-foreground">(AI Optimized 30/50 Words)</span>
               </Label>
               <Textarea 
-                className="h-80 font-mono text-sm leading-relaxed p-6"
+                className="h-80 font-mono text-sm leading-relaxed p-6 rounded-2xl border-2 shadow-inner"
                 value={formData.description} 
                 onChange={e => setFormData(p => ({...p, description: e.target.value}))} 
                 placeholder="Click 'AI Research' for elite market analysis..."
@@ -268,7 +265,7 @@ export default function ProductsPage() {
                 multiple 
                 accept="image/*" 
                 onChange={e => setFiles(Array.from(e.target.files || []).slice(0, 4))} 
-                className="cursor-pointer file:bg-primary file:text-primary-foreground h-12"
+                className="cursor-pointer file:bg-primary file:text-primary-foreground h-12 rounded-xl"
               />
               <div className="grid grid-cols-4 gap-4">
                 {formData.imageUrls.map((url, i) => (
@@ -287,12 +284,12 @@ export default function ProductsPage() {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button type="submit" className="flex-1 h-14 text-lg font-bold shadow-lg" disabled={loading}>
+              <Button type="submit" className="flex-1 h-14 text-lg font-bold shadow-lg rounded-2xl" disabled={loading}>
                 {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
                 {formData.id ? 'Sync Product Updates' : 'Publish to Superapp'}
               </Button>
               {formData.id && (
-                <Button type="button" variant="outline" className="h-14 px-8 border-2" onClick={resetForm}>Discard Edit</Button>
+                <Button type="button" variant="outline" className="h-14 px-8 border-2 rounded-2xl" onClick={resetForm}>Discard Edit</Button>
               )}
             </div>
           </form>

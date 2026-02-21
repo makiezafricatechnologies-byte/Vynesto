@@ -1,10 +1,10 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { initializeFirebase as init } from './init';
+import { FirebaseApp } from 'firebase/app';
+import { Auth } from 'firebase/auth';
+import { Firestore } from 'firebase/firestore';
+import { FirebaseStorage, getStorage } from 'firebase/storage';
 
 export type FirebaseServices = {
   firebaseApp: FirebaseApp;
@@ -13,23 +13,18 @@ export type FirebaseServices = {
   storage: FirebaseStorage;
 };
 
-/**
- * Robust Firebase initialization for Next.js.
- */
-export function initializeFirebase(): FirebaseServices {
-  let app: FirebaseApp;
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApp();
-  }
+let services: FirebaseServices | null = null;
 
-  return {
-    firebaseApp: app,
-    auth: getAuth(app),
-    firestore: getFirestore(app),
-    storage: getStorage(app)
+export function initializeFirebase(): FirebaseServices {
+  if (services) return services;
+  const result = init();
+  services = {
+    firebaseApp: result.firebaseApp,
+    auth: result.auth,
+    firestore: result.firestore,
+    storage: result.storage
   };
+  return services;
 }
 
 export * from './provider';
@@ -40,8 +35,8 @@ export * from './non-blocking-updates';
 export * from './errors';
 export * from './error-emitter';
 
-// Helper hook for storage
 import { useFirebase } from './provider';
+
 export const useStorage = () => {
   const { firebaseApp } = useFirebase();
   return getStorage(firebaseApp);

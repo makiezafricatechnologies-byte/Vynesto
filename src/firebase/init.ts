@@ -1,4 +1,3 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -9,6 +8,7 @@ import { getStorage } from 'firebase/storage';
 
 /**
  * Robust Firebase initialization for Next.js App Router.
+ * Isolates initialization to prevent circular dependencies in the barrel file.
  */
 export function initializeFirebase() {
   let app: FirebaseApp;
@@ -17,7 +17,6 @@ export function initializeFirebase() {
     try {
       app = initializeApp(firebaseConfig);
     } catch (e) {
-      console.warn('Firebase re-initialization error caught');
       app = getApp();
     }
   } else {
