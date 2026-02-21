@@ -1,7 +1,8 @@
+
 'use server';
 /**
  * @fileOverview Elite Product Research AI Agent.
- * Performs deep-dive research to generate professional, SEO-optimized product descriptions.
+ * Generates professional, SEO-optimized product descriptions with strict word counts.
  */
 
 import { ai } from '@/ai/genkit';
@@ -28,15 +29,15 @@ export type ProductResearchInput = z.infer<typeof ProductResearchInputSchema>;
 export type ProductResearchOutput = z.infer<typeof ProductResearchOutputSchema>;
 
 export async function researchProduct(input: ProductResearchInput): Promise<ProductResearchOutput> {
-  return productResearchFlow(input);
+  const result = await productResearchFlow(input);
+  return result;
 }
 
 const prompt = ai.definePrompt({
   name: 'productResearchPrompt',
   input: { schema: ProductResearchInputSchema },
   output: { schema: ProductResearchOutputSchema },
-  prompt: `You are an elite market research agent powered by ChatGPT-4 level synthesis. 
-Perform a deep-dive research for "{{{productName}}}" in the "{{{category}}}" category.
+  prompt: `You are an elite market research agent. Your task is to perform deep-dive research for "{{{productName}}}" in the "{{{category}}}" category.
 
 Your requirements are STRICT:
 1. **Introduction**: Write a MINIMUM of 30 words describing the product's role and consumer impact.
@@ -45,7 +46,7 @@ Your requirements are STRICT:
 4. **SEO Keywords**: Provide exactly 15 high-volume tags.
 5. **Marketing Banner**: Create a catchy headline and a professional "Pro-Tip" for customers.
 
-CRITICAL: Use your browser-searching capabilities to ensure the data is authoritative. If data is sparse, research the industry leader in this category to provide a comparable high-quality profile.`,
+Search for authoritative information online to ensure the profile is accurate and professional. Use industry-standard SEO practices.`,
 });
 
 const productResearchFlow = ai.defineFlow(
