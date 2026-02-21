@@ -1,328 +1,77 @@
 {
   "entities": {
     "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user account in the Frewsie Shop platform. This entity stores user profile information and access roles, separate from authentication credentials which are managed by an external system.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the User entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The full name of the user."
-        },
-        "email": {
-          "type": "string",
-          "description": "The primary email address of the user. (Format: email)"
-        },
-        "phone": {
-          "type": "string",
-          "description": "The phone number of the user, used for contact and delivery purposes."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user account was created. (Format: date-time)"
-        },
-        "role": {
-          "type": "string",
-          "description": "The role assigned to the user (e.g., 'customer', 'admin') for managing access permissions within the application."
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "name",
-        "email",
-        "createdAt",
-        "role"
-      ]
+      "required": ["id", "name", "email", "createdAt", "role"]
     },
     "Category": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Category",
       "type": "object",
-      "description": "Represents a product category available within the Frewsie Shop, used to organize and filter products.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Category entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The human-readable name of the product category."
-        },
-        "image": {
-          "type": "string",
-          "description": "URL to an image representing the category, typically for display in UI. (Format: uri)"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the category was created. (Format: date-time)"
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "image": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "name",
-        "image",
-        "createdAt"
-      ]
+      "required": ["id", "name", "image", "createdAt"]
     },
     "Product": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Product",
       "type": "object",
-      "description": "Represents an individual product available for purchase on the Frewsie Shop platform.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Product entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the product."
-        },
-        "slug": {
-          "type": "string",
-          "description": "A URL-friendly, unique identifier for the product, often derived from its name."
-        },
-        "description": {
-          "type": "string",
-          "description": "A detailed description of the product, including features and specifications."
-        },
-        "price": {
-          "type": "number",
-          "description": "The standard selling price of the product."
-        },
-        "discountPrice": {
-          "type": "number",
-          "description": "The discounted price of the product, if applicable (e.g., during a flash sale). This property is optional and only present when a discount is active."
-        },
-        "categoryId": {
-          "type": "string",
-          "description": "Reference to the unique identifier of the Category this product belongs to. (Relationship: Category 1:N Product)"
-        },
-        "images": {
-          "type": "array",
-          "description": "An array of URLs to images showcasing the product. (Items Format: uri)",
-          "items": {
-            "type": "string"
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "wasPrice": { "type": "number" },
+        "nowPrice": { "type": "number" },
+        "imageUrls": { "type": "array", "items": { "type": "string" } },
+        "isFeatured": { "type": "boolean" },
+        "isPromotional": { "type": "boolean" },
+        "flashSaleDays": { "type": "number" },
+        "discountPercentage": { "type": "number" },
+        "promoCode": { "type": "string" },
+        "marketingBanner": {
+          "type": "object",
+          "properties": {
+            "headline": { "type": "string" },
+            "subheadline": { "type": "string" },
+            "tip": { "type": "string" }
           }
         },
-        "stock": {
-          "type": "number",
-          "description": "The current quantity of this product available in inventory."
-        },
-        "tags": {
-          "type": "array",
-          "description": "An array of keywords or tags associated with the product, used for search and filtering. (Relationship: Product N:N Tag - represented as an embedded array of strings)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "isFlashSale": {
-          "type": "boolean",
-          "description": "A boolean flag indicating if the product is currently part of an active flash sale."
-        },
-        "flashSaleEndTime": {
-          "type": "string",
-          "description": "Timestamp indicating when the flash sale for this product is scheduled to end. Only relevant if 'isFlashSale' is true. (Format: date-time)"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the product record was initially created. (Format: date-time)"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating the last time the product record was updated. (Format: date-time)"
-        }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "name",
-        "slug",
-        "description",
-        "price",
-        "categoryId",
-        "images",
-        "stock",
-        "tags",
-        "isFlashSale",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "Order": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Order",
-      "type": "object",
-      "description": "Represents a completed or pending customer order in the Frewsie Shop.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Order entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the unique identifier of the User who placed this order. (Relationship: User 1:N Order)"
-        },
-        "items": {
-          "type": "array",
-          "description": "An array where each element is a JSON string representing an ordered item. Each string follows the format: '{\"productId\":\"<ID>\", \"quantity\":<QTY>, \"price\":<PRICE_AT_PURCHASE>}'.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "subtotal": {
-          "type": "number",
-          "description": "The cumulative price of all items in the order before any discounts or delivery charges."
-        },
-        "discount": {
-          "type": "number",
-          "description": "The total monetary discount applied to the entire order, if any."
-        },
-        "total": {
-          "type": "number",
-          "description": "The final total amount to be paid for the order after applying discounts, but before any delivery fees."
-        },
-        "paymentStatus": {
-          "type": "string",
-          "description": "The current status of the payment for the order (e.g., 'pending', 'paid', 'failed', 'refunded')."
-        },
-        "deliveryStatus": {
-          "type": "string",
-          "description": "The current status of the order's delivery process (e.g., 'pending', 'shipped', 'delivered', 'cancelled')."
-        },
-        "deliveryAddress": {
-          "type": "string",
-          "description": "The physical street address specified for the order delivery."
-        },
-        "deliveryCampus": {
-          "type": "string",
-          "description": "The specific campus location chosen for delivery, if the app supports campus-based deliveries."
-        },
-        "deliveryPhoneNumber": {
-          "type": "string",
-          "description": "The contact phone number for the delivery recipient."
-        },
-        "deliveryRecipientName": {
-          "type": "string",
-          "description": "The full name of the person designated to receive the delivery."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was placed. (Format: date-time)"
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "items",
-        "subtotal",
-        "total",
-        "paymentStatus",
-        "deliveryStatus",
-        "deliveryAddress",
-        "deliveryCampus",
-        "deliveryRecipientName",
-        "createdAt"
-      ]
+      "required": ["id", "name", "category", "nowPrice", "imageUrls", "isFeatured", "createdAt"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores individual user profiles. Access is restricted to the owning user or administrators. Each user document includes a 'role' field, which is used for database-based access control (DBAC).",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user, corresponding to Firebase Authentication UID."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/categories/{categoryId}",
-        "definition": {
-          "entityName": "Category",
-          "schema": {
-            "$ref": "#/backend/entities/Category"
-          },
-          "description": "Stores product categories. This collection is publicly readable by all users. Write access (create, update, delete) is restricted to administrators only, enforcing structural segregation for different access postures.",
-          "params": [
-            {
-              "name": "categoryId",
-              "description": "The unique identifier for the product category."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/products/{productId}",
-        "definition": {
-          "entityName": "Product",
-          "schema": {
-            "$ref": "#/backend/entities/Product"
-          },
-          "description": "Stores details for all products available in the shop. This collection is publicly readable by all users. Write access (create, update, delete) is restricted to administrators. Includes 'isFlashSale' and 'flashSaleEndTime' fields for managing product promotions. This segregation supports secure QAPs for product listings.",
-          "params": [
-            {
-              "name": "productId",
-              "description": "The unique identifier for the product."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/orders/{orderId}",
-        "definition": {
-          "entityName": "Order",
-          "schema": {
-            "$ref": "#/backend/entities/Order"
-          },
-          "description": "Stores individual customer orders, nested under the respective user's profile. This hierarchical path establishes strong ownership, ensuring customers can only read/write their own orders. The document includes the 'userId' field, which is denormalized for Authorization Independence, enabling atomic security rule checks. Administrators have broader read/write access for order management. This structure ensures QAPs for user-specific order lists.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user who placed the order, corresponding to Firebase Authentication UID."
-            },
-            {
-              "name": "orderId",
-              "description": "The unique identifier for the specific order."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/roles_admin/{adminUid}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "A dedicated collection for defining administrator privileges. The mere existence of a document at `/roles_admin/{uid}` signifies that the corresponding user (identified by `adminUid`) has administrator status. This implements Database-Based Access Control (DBAC) for admin roles, ensuring Authorization Independence by allowing direct existence checks in security rules (e.g., `exists(/roles_admin/$(request.auth.uid))`). Documents typically contain only the `id` field for the admin UID, or a minimal marker object.",
-          "params": [
-            {
-              "name": "adminUid",
-              "description": "The unique identifier of a user who has administrator privileges, corresponding to Firebase Authentication UID."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure for Frewsie Shop prioritizes security, scalability, and debuggability by strictly adhering to the core design principles and strategy mandates. \n\n**Authorization Independence (CRITICAL) and Denormalization:**\nTo achieve Authorization Independence and avoid costly `get()` calls in security rules, key authorization contexts are denormalized. For user-specific data like orders, the `userId` is not only part of the document's path (`/users/{userId}/orders/{orderId}`) but also explicitly included within the `Order` document itself. This allows for direct and efficient checks like `request.auth.uid == resource.data.userId` without needing to traverse parent documents. \n\nFor administrator roles, a dedicated collection `/roles_admin/{adminUid}` is established. The mere existence of a document in this collection at `request.auth.uid` grants admin privileges. This completely eliminates `get()` calls to check roles, making authorization rules atomic, robust, and easy to debug (e.g., `exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))`). While the user requested custom claims for admin roles, the primary source of truth for role-based access in this Firestore design resides in the database via the `/roles_admin` collection. If custom claims are still desired, a Cloud Function can be used to synchronize `request.auth.token.admin` based on the status in `/roles_admin/{adminUid}`, ensuring the database remains the single source of truth for authorization data.\n\n**Queryable Authorization Postures (QAPs) and Structural Segregation:**\nSecure `list` operations are enabled through careful structural segregation, ensuring that documents within a collection share a homogeneous security posture. \n*   Publicly accessible data like `Categories` (`/categories`) and `Products` (`/products`) are placed in top-level collections, allowing anyone to read and list them without additional filtering logic in security rules. This makes `list` queries on these collections inherently secure for read-only access.\n*   Private user data, such as `User` profiles (`/users/{userId}`) and `Orders` (`/users/{userId}/orders`), are strictly path-based. This structure ensures that `list` queries for orders (e.g., `/users/$(request.auth.uid)/orders`) implicitly filter by the authenticated user's ID, fulfilling QAPs for user-owned data. This prevents unauthorized users from listing or accessing other users' private information.\n\n**DBAC (Database-Based Access Control):**\nRoles are stored directly in the database. Each `User` document in `/users/{userId}` contains a `role` field. Additionally, the `/roles_admin/{adminUid}` collection serves as the definitive source for admin status, making authorization decisions based solely on `request.auth.uid` against database content. This avoids the complexity and debugging challenges associated with custom claims for the core security rules.\n\n**Clarity and Predictability:**\nPath segments are descriptive (e.g., `{userId}`, `{productId}`). Field names like `ownerId`, `paymentStatus`, and `deliveryStatus` are explicit, enhancing rule clarity and making the data model predictable. The `Order` schema's `items` array of JSON strings, while adhered to as per the input, is noted as potentially less performant for querying specific item details within rules compared to native object arrays. Overall, this design ensures a secure, scalable, and easily auditable Firestore structure for Frewsie Shop."
+    "/users/{userId}": {
+      "schema": "#/entities/User",
+      "description": "User profiles and roles."
+    },
+    "/categories/{categoryId}": {
+      "schema": "#/entities/Category",
+      "description": "Product category taxonomy."
+    },
+    "/products/{productId}": {
+      "schema": "#/entities/Product",
+      "description": "Store inventory and promotions."
+    },
+    "/business/config": {
+      "schema": "object",
+      "description": "Global business identity configuration."
+    }
   }
 }
