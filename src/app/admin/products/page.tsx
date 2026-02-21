@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -101,6 +100,8 @@ export default function ProductsPage() {
       const formattedDescription = `### Introduction\n${research.introduction}\n\n### Brand & Company Profile\n${research.companyInfo}\n\n### Key Benefits\n${research.benefits.map(b => `- ${b}`).join('\n')}\n\n### SEO Tags\n${research.seoTags.join(', ')}`;
 
       setFormData(prev => ({ ...prev, description: formattedDescription }));
+    } catch (error) {
+      console.error('AI Research Error:', error);
     } finally {
       setAiLoading(false);
     }
@@ -116,7 +117,7 @@ export default function ProductsPage() {
       let finalImageUrls = [...formData.imageUrls];
 
       if (files.length > 0) {
-        // Parallel sync upload for 4 images
+        // Parallel sync upload for images
         const uploadPromises = files.map(async (file, index) => {
           const storageRef = ref(storage, `products/${productRef.id}/img_${Date.now()}_${index}`);
           const snapshot = await uploadBytes(storageRef, file);
@@ -169,11 +170,11 @@ export default function ProductsPage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Product Catalog</h1>
-          <p className="text-muted-foreground">List items with AI research and parallel image sync.</p>
+          <p className="text-muted-foreground">List items with elite AI research and parallel sync.</p>
         </div>
       </div>
 
-      <Card className="border-2 shadow-xl">
+      <Card className="border-2 shadow-xl overflow-hidden">
         <CardContent className="p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -191,6 +192,7 @@ export default function ProductsPage() {
                     variant="secondary" 
                     onClick={handleResearch} 
                     disabled={aiLoading || !formData.name}
+                    className="shrink-0"
                   >
                     {aiLoading ? <Loader2 className="animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
                     AI Research
@@ -214,11 +216,11 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="space-y-2">
-                <Label>Was Price</Label>
+                <Label>Was Price (KSh)</Label>
                 <Input type="number" value={formData.wasPrice} onChange={e => setFormData(p => ({...p, wasPrice: e.target.value}))} placeholder="250" />
               </div>
               <div className="space-y-2">
-                <Label>Now Price</Label>
+                <Label>Now Price (KSh)</Label>
                 <Input type="number" value={formData.nowPrice} onChange={e => setFormData(p => ({...p, nowPrice: e.target.value}))} placeholder="100" required />
               </div>
               <div className="space-y-2">
@@ -232,23 +234,23 @@ export default function ProductsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="flex items-center space-x-3 p-4 border rounded-xl bg-muted/30">
+               <div className="flex items-center justify-between p-4 border rounded-xl bg-muted/30">
+                <Label className="cursor-pointer">Flash Sale Feature</Label>
                 <Switch checked={formData.isFeatured} onCheckedChange={v => setFormData(p => ({...p, isFeatured: v}))} />
-                <Label>Flash Sale Feature</Label>
               </div>
-              <div className="flex items-center space-x-3 p-4 border rounded-xl bg-muted/30">
+              <div className="flex items-center justify-between p-4 border rounded-xl bg-muted/30">
+                <Label className="cursor-pointer">Carousel Banner</Label>
                 <Switch checked={formData.isPromotional} onCheckedChange={v => setFormData(p => ({...p, isPromotional: v}))} />
-                <Label>Carousel Banner</Label>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Description (AI Enhanced)</Label>
+              <Label>Description (Professional AI Output)</Label>
               <Textarea 
-                className="h-64 font-mono text-sm"
+                className="h-72 font-mono text-sm leading-relaxed"
                 value={formData.description} 
                 onChange={e => setFormData(p => ({...p, description: e.target.value}))} 
-                placeholder="Click 'AI Research' for a professional 30/50 word profile..."
+                placeholder="Click 'AI Research' for elite 30/50 word profile..."
               />
             </div>
 
@@ -259,17 +261,18 @@ export default function ProductsPage() {
                 multiple 
                 accept="image/*" 
                 onChange={e => setFiles(Array.from(e.target.files || []).slice(0, 4))} 
+                className="cursor-pointer"
               />
               <div className="grid grid-cols-4 gap-4">
                 {formData.imageUrls.map((url, i) => (
-                  <div key={i} className="aspect-square rounded-lg overflow-hidden border relative group">
+                  <div key={i} className="aspect-square rounded-lg overflow-hidden border-2 relative group">
                     <img src={url} alt="Product" className="object-cover w-full h-full" />
                     <button 
                       type="button"
                       onClick={() => setFormData(p => ({...p, imageUrls: p.imageUrls.filter((_, idx) => idx !== i)}))}
-                      className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <Trash2 className="w-5 h-5 text-white" />
+                      <Trash2 className="w-6 h-6 text-white" />
                     </button>
                   </div>
                 ))}
@@ -277,45 +280,58 @@ export default function ProductsPage() {
             </div>
 
             <div className="flex gap-4">
-              <Button type="submit" className="flex-1 h-12 text-lg" disabled={loading}>
+              <Button type="submit" className="flex-1 h-14 text-lg font-bold" disabled={loading}>
                 {loading && <Loader2 className="animate-spin mr-2" />}
-                {formData.id ? 'Update Product' : 'List Product'}
+                {formData.id ? 'Update Listing' : 'Publish Product'}
               </Button>
               {formData.id && (
-                <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
+                <Button type="button" variant="outline" className="h-14 px-8" onClick={resetForm}>Cancel</Button>
               )}
             </div>
           </form>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
         {products?.map(product => (
-          <Card key={product.id} className="overflow-hidden group hover:shadow-lg transition-shadow">
+          <Card key={product.id} className="overflow-hidden group hover:shadow-2xl transition-all border-2">
             <div className="aspect-video relative overflow-hidden bg-muted">
               <ProductImageSlider images={product.imageUrls || []} />
-            </div>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="font-bold text-lg">{product.name}</h3>
-                  <p className="text-xs text-muted-foreground uppercase">{product.category}</p>
+              {product.isFeatured && (
+                <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                  FLASH SALE
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFormData({...product, id: product.id})}>
+              )}
+            </div>
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="font-bold text-xl tracking-tight">{product.name}</h3>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{product.category}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => {
+                    setFormData({...product, id: product.id, wasPrice: String(product.wasPrice), nowPrice: String(product.nowPrice)});
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}>
                     <Edit2 className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'products', product.id))}>
+                  <Button variant="outline" size="icon" className="h-9 w-9 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteDocumentNonBlocking(doc(db, 'products', product.id))}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xl font-bold text-primary">KSh {product.nowPrice}</span>
+              <div className="flex items-baseline gap-3">
+                <span className="text-2xl font-black text-primary">KSh {product.nowPrice}</span>
                 {product.wasPrice > 0 && (
-                  <span className="text-xs line-through text-muted-foreground">KSh {product.wasPrice}</span>
+                  <span className="text-sm line-through text-muted-foreground font-medium">KSh {product.wasPrice}</span>
                 )}
               </div>
+              {product.discountPercentage > 0 && (
+                <div className="mt-2 text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded inline-block">
+                  SAVE {product.discountPercentage}%
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

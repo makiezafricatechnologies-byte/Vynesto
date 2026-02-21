@@ -1,4 +1,3 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -14,6 +13,9 @@ export type FirebaseServices = {
   storage: FirebaseStorage;
 };
 
+/**
+ * Robust Firebase initialization for Next.js 15.
+ */
 export function initializeFirebase(): FirebaseServices {
   let app: FirebaseApp;
   if (!getApps().length) {
