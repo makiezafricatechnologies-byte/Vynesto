@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, getStorage } from 'firebase/storage';
+import { useFirestore, useUser, useCollection, useMemoFirebase, useStorage } from '@/firebase';
+import { collection, doc, setDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, Edit2, Loader2, Sparkles, ImagePlus } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Sparkles } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { researchProduct } from '@/ai/flows/product-research-flow';
@@ -19,7 +19,7 @@ import { researchProduct } from '@/ai/flows/product-research-flow';
 export default function ProductsPage() {
   const { db } = useFirestore();
   const { user } = useUser();
-  const storage = getStorage();
+  const storage = useStorage();
   
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -155,7 +155,7 @@ ${research.seoTags.join(', ')}
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto p-4">
+    <div className="space-y-6">
       <Card className="border-2 border-primary/10 shadow-xl">
         <CardHeader className="bg-primary/5">
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
@@ -208,20 +208,39 @@ ${research.seoTags.join(', ')}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm">Original (Was)</Label>
+                <Label className="text-sm font-semibold">Original Price (Was)</Label>
                 <Input type="number" value={formData.wasPrice} onChange={e => setFormData(p => ({...p, wasPrice: e.target.value}))} placeholder="250" />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm">Current (Now)</Label>
+                <Label className="text-sm font-semibold">Sale Price (Now)</Label>
                 <Input type="number" value={formData.nowPrice} onChange={e => setFormData(p => ({...p, nowPrice: e.target.value}))} placeholder="100" required />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm">Discount %</Label>
+                <Label className="text-sm font-semibold">Discount %</Label>
                 <Input type="number" value={formData.discountPercentage} onChange={e => setFormData(p => ({...p, discountPercentage: e.target.value}))} placeholder="15" />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm">Promo Code</Label>
+                <Label className="text-sm font-semibold">Promo Code</Label>
                 <Input value={formData.promoCode} onChange={e => setFormData(p => ({...p, promoCode: e.target.value}))} placeholder="FREWSIE10" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div className="flex items-center space-x-2 p-4 border rounded-lg bg-primary/5">
+                <Switch 
+                  id="featured" 
+                  checked={formData.isFeatured} 
+                  onCheckedChange={v => setFormData(p => ({...p, isFeatured: v}))}
+                />
+                <Label htmlFor="featured" className="cursor-pointer font-semibold">Feature in Flash Sale</Label>
+              </div>
+              <div className="flex items-center space-x-2 p-4 border rounded-lg bg-accent/5">
+                <Switch 
+                  id="promotional" 
+                  checked={formData.isPromotional} 
+                  onCheckedChange={v => setFormData(p => ({...p, isPromotional: v}))}
+                />
+                <Label htmlFor="promotional" className="cursor-pointer font-semibold">Add to Carousel Banner</Label>
               </div>
             </div>
 
@@ -271,6 +290,48 @@ ${research.seoTags.join(', ')}
           </form>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {products?.map(product => (
+          <Card key={product.id} className="overflow-hidden group hover:shadow-xl transition-all border-primary/5">
+            <div className="aspect-video relative overflow-hidden bg-muted">
+              {product.imageUrls?.[0] ? (
+                <img 
+                  src={product.imageUrls[0]} 
+                  alt={product.name} 
+                  className="object-cover w-full h-full group-hover:scale-105 transition-transform"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">No image</div>
+              )}
+              {product.isFeatured && (
+                <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 text-xs font-bold rounded shadow-lg">
+                  FLASH SALE
+                </div>
+              )}
+            </div>
+            <CardContent className="p-4">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-bold text-lg truncate flex-1">{product.name}</h3>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFormData({...product, id: product.id})}>
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl font-black text-primary">KSh {product.nowPrice}</span>
+                {product.wasPrice > 0 && (
+                  <span className="text-sm line-through text-muted-foreground">KSh {product.wasPrice}</span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground truncate italic">
+                {product.category}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
