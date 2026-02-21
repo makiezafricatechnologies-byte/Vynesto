@@ -33,7 +33,6 @@ export default function BusinessPage() {
       let logoUrl = businessConfig?.logoUrl || '';
       let registrationCertUrl = businessConfig?.registrationCertUrl || '';
 
-      // Upload files in parallel for speed
       const uploads = [];
       
       if (logoFile) {
@@ -46,7 +45,9 @@ export default function BusinessPage() {
         uploads.push(uploadBytes(certRef, certFile).then(snap => getDownloadURL(snap.ref).then(url => { registrationCertUrl = url; })));
       }
 
-      await Promise.all(uploads);
+      if (uploads.length > 0) {
+        await Promise.all(uploads);
+      }
 
       const updateData = {
         logoUrl,
@@ -60,8 +61,8 @@ export default function BusinessPage() {
       setLogoFile(null);
       setCertFile(null);
     } finally {
-      setSaving(true);
-      setTimeout(() => setSaving(false), 2000);
+      // Corrected: Set saving to false immediately after async operations complete
+      setSaving(false);
     }
   }
 

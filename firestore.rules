@@ -33,8 +33,10 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // Specific match for business config with Ezra override
     match /business/{configId} {
       allow read: if true;
+      allow write: if isEzra();
     }
 
     // --- User Profiles ---
