@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFirestore, useUser, useCollection, useMemoFirebase, useStorage } from '@/firebase';
-import { collection, doc, setDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,10 +11,57 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, Edit2, Loader2, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Sparkles, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { researchProduct } from '@/ai/flows/product-research-flow';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+
+/**
+ * Endless Sliding Image Component for Product Cards
+ */
+function ProductImageSlider({ images }: { images: string[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [images]);
+
+  if (!images || images.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+        No image available
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-full group">
+      {images.map((url, idx) => (
+        <div
+          key={url}
+          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+            idx === currentIndex ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <img src={url} alt={`Slide ${idx}`} className="object-cover w-full h-full" />
+        </div>
+      ))}
+      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+        {images.map((_, idx) => (
+          <div 
+            key={idx} 
+            className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentIndex ? 'bg-white w-3' : 'bg-white/50'}`} 
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function ProductsPage() {
   const { db } = useFirestore();
@@ -154,6 +201,12 @@ ${research.seoTags.join(', ')}
     setFiles([]);
   }
 
+  function handleDeleteProduct(productId: string) {
+    if (!db || !window.confirm('Are you sure you want to delete this product?')) return;
+    const productRef = doc(db, 'products', productId);
+    deleteDocumentNonBlocking(productRef);
+  }
+
   return (
     <div className="space-y-6">
       <Card className="border-2 border-primary/10 shadow-xl">
@@ -263,7 +316,7 @@ ${research.seoTags.join(', ')}
                 className="cursor-pointer"
                 onChange={e => setFiles(Array.from(e.target.files || []).slice(0, 4))} 
               />
-              {formData.imageUrls.length > 0 && (
+              {(formData.imageUrls.length > 0 || files.length > 0) && (
                 <div className="grid grid-cols-4 gap-2">
                   {formData.imageUrls.map((url, i) => (
                     <div key={i} className="relative aspect-square rounded overflow-hidden border">
@@ -277,6 +330,11 @@ ${research.seoTags.join(', ')}
                       </button>
                     </div>
                   ))}
+                  {files.map((file, i) => (
+                    <div key={i} className="relative aspect-square rounded overflow-hidden border bg-muted flex items-center justify-center">
+                      <span className="text-[10px] text-center p-1 truncate w-full">{file.name}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -286,6 +344,11 @@ ${research.seoTags.join(', ')}
                 {loading ? <Loader2 className="animate-spin mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
                 {formData.id ? 'Save Changes' : 'Launch Product Listing'}
               </Button>
+              {formData.id && (
+                <Button type="button" variant="outline" size="lg" onClick={resetForm}>
+                  Cancel
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>
@@ -295,17 +358,9 @@ ${research.seoTags.join(', ')}
         {products?.map(product => (
           <Card key={product.id} className="overflow-hidden group hover:shadow-xl transition-all border-primary/5">
             <div className="aspect-video relative overflow-hidden bg-muted">
-              {product.imageUrls?.[0] ? (
-                <img 
-                  src={product.imageUrls[0]} 
-                  alt={product.name} 
-                  className="object-cover w-full h-full group-hover:scale-105 transition-transform"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">No image</div>
-              )}
+              <ProductImageSlider images={product.imageUrls || []} />
               {product.isFeatured && (
-                <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 text-xs font-bold rounded shadow-lg">
+                <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 text-xs font-bold rounded shadow-lg z-10">
                   FLASH SALE
                 </div>
               )}
@@ -316,6 +371,9 @@ ${research.seoTags.join(', ')}
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFormData({...product, id: product.id})}>
                     <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteProduct(product.id)}>
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
