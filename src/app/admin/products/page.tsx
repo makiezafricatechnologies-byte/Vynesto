@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirestore, useUser, useCollection } from '@/firebase';
+import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, getStorage } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
@@ -44,9 +44,16 @@ export default function ProductsPage() {
     }
   });
 
-  const categoriesQuery = query(collection(db!, 'categories'), orderBy('name', 'asc'));
+  const categoriesQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'categories'), orderBy('name', 'asc'));
+  }, [db]);
   const { data: categories } = useCollection(categoriesQuery);
-  const productsQuery = query(collection(db!, 'products'), orderBy('createdAt', 'desc'));
+
+  const productsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+  }, [db]);
   const { data: products } = useCollection(productsQuery);
 
   async function handleResearch() {
@@ -62,13 +69,13 @@ export default function ProductsPage() {
 ### Introduction
 ${research.introduction}
 
-### About the Manufacturer
+### Product & Company Profile
 ${research.companyInfo}
 
 ### Key Benefits
 ${research.benefits.map(b => `- ${b}`).join('\n')}
 
-### SEO Keywords
+### SEO Keywords & Tags
 ${research.seoTags.join(', ')}
       `.trim();
 
@@ -98,7 +105,6 @@ ${research.seoTags.join(', ')}
       let finalImageUrls = [...formData.imageUrls];
 
       if (files.length > 0) {
-        // Parallel Upload for efficiency
         const uploadPromises = files.map(async (file, index) => {
           const storageRef = ref(storage, `products/${productRef.id}/img_${index}_${Date.now()}`);
           const snapshot = await uploadBytes(storageRef, file);
@@ -220,14 +226,13 @@ ${research.seoTags.join(', ')}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-semibold">Description (Research-Based AI Content)</Label>
+              <Label className="text-sm font-semibold">AI Generated Content (Intro, Profile, Benefits)</Label>
               <Textarea 
                 className="h-64 font-mono text-sm leading-relaxed"
                 value={formData.description} 
                 onChange={e => setFormData(p => ({...p, description: e.target.value}))} 
-                placeholder="Click 'AI Research' for an elite, SEO-optimized product description..."
+                placeholder="Click 'AI Research' for a professional 30/50 word researched profile..."
               />
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Supports Markdown Formatting</p>
             </div>
 
             <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
@@ -257,131 +262,15 @@ ${research.seoTags.join(', ')}
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-lg bg-primary/5">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Flash Sale</Label>
-                  <p className="text-xs text-muted-foreground">Feature this product in the flash deals section</p>
-                </div>
-                <Switch checked={formData.isFeatured} onCheckedChange={v => setFormData(p => ({...p, isFeatured: v}))} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Carousel Banner</Label>
-                  <p className="text-xs text-muted-foreground">Display this as a hero promotional banner</p>
-                </div>
-                <Switch checked={formData.isPromotional} onCheckedChange={v => setFormData(p => ({...p, isPromotional: v}))} />
-              </div>
-            </div>
-
-            {formData.isPromotional && (
-              <Card className="border-dashed border-2">
-                <CardHeader>
-                  <CardTitle className="text-sm uppercase tracking-tighter">AI Banner Designer</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Input 
-                    value={formData.marketingBanner.headline} 
-                    onChange={e => setFormData(p => ({...p, marketingBanner: {...p.marketingBanner, headline: e.target.value}}))} 
-                    placeholder="Headline" 
-                  />
-                  <Input 
-                    value={formData.marketingBanner.subheadline} 
-                    onChange={e => setFormData(p => ({...p, marketingBanner: {...p.marketingBanner, subheadline: e.target.value}}))} 
-                    placeholder="Subheadline" 
-                  />
-                  <Textarea 
-                    value={formData.marketingBanner.tip} 
-                    onChange={e => setFormData(p => ({...p, marketingBanner: {...p.marketingBanner, tip: e.target.value}}))} 
-                    placeholder="Exclusive Marketing Tip/Hook" 
-                  />
-                </CardContent>
-              </Card>
-            )}
-
             <div className="flex gap-4">
               <Button type="submit" className="flex-1 h-12 text-lg shadow-lg" disabled={loading}>
                 {loading ? <Loader2 className="animate-spin mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
                 {formData.id ? 'Save Changes' : 'Launch Product Listing'}
               </Button>
-              {formData.id && (
-                <Button type="button" variant="outline" className="h-12" onClick={resetForm}>
-                  Cancel
-                </Button>
-              )}
             </div>
           </form>
         </CardContent>
       </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-10 border-t">
-        {products?.map(product => (
-          <Card key={product.id} className="overflow-hidden group hover:shadow-2xl transition-all border-none bg-card shadow-md">
-            <div className="relative h-56 bg-muted">
-              {product.imageUrls?.[0] ? (
-                <img src={product.imageUrls[0]} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-              ) : (
-                <div className="flex items-center justify-center h-full"><ImagePlus className="text-muted-foreground w-12 h-12" /></div>
-              )}
-              <div className="absolute top-3 left-3 flex gap-2">
-                {product.isFeatured && <span className="bg-yellow-400 text-black font-bold px-3 py-1 text-[10px] rounded-full shadow-lg uppercase">Flash</span>}
-                {product.isPromotional && <span className="bg-primary text-primary-foreground font-bold px-3 py-1 text-[10px] rounded-full shadow-lg uppercase">Promo</span>}
-              </div>
-            </div>
-            <CardContent className="p-5">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <h3 className="font-black text-lg truncate uppercase">{product.name}</h3>
-                  <p className="text-xs font-medium text-muted-foreground">{product.category}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-xl text-primary">Ksh {product.nowPrice}</p>
-                  {product.wasPrice > 0 && <p className="text-xs line-through text-muted-foreground">Ksh {product.wasPrice}</p>}
-                </div>
-              </div>
-              <div className="flex gap-3 pt-4 border-t">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1 rounded-full" 
-                  onClick={() => {
-                    setFormData({
-                      id: product.id,
-                      name: product.name,
-                      category: product.category,
-                      description: product.description,
-                      wasPrice: product.wasPrice.toString(),
-                      nowPrice: product.nowPrice.toString(),
-                      isFeatured: product.isFeatured,
-                      isPromotional: product.isPromotional,
-                      flashSaleDays: product.flashSaleDays?.toString() || '7',
-                      discountPercentage: product.discountPercentage?.toString() || '0',
-                      promoCode: product.promoCode || '',
-                      imageUrls: product.imageUrls || [],
-                      marketingBanner: product.marketingBanner || { headline: '', subheadline: '', tip: '' }
-                    });
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                >
-                  <Edit2 className="w-4 h-4 mr-2" /> Edit
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  className="rounded-full w-10 h-10 p-0"
-                  onClick={() => {
-                    if(confirm('Are you sure you want to delete this product?')) {
-                      deleteDoc(doc(db!, 'products', product.id));
-                    }
-                  }}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
     </div>
   );
 }
