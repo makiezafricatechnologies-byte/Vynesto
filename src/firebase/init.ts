@@ -7,18 +7,17 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 /**
- * Isolated initialization to avoid circular dependencies.
+ * Robust Firebase initialization for Next.js App Router.
  */
 export function initializeFirebase() {
   let app: FirebaseApp;
   
   if (!getApps().length) {
     try {
-      // In development/studio, we often need to be explicit with the config object
       app = initializeApp(firebaseConfig);
     } catch (e) {
-      console.error('Firebase initialization failed:', e);
-      app = initializeApp(firebaseConfig);
+      console.warn('Firebase re-initialization error caught');
+      app = getApp();
     }
   } else {
     app = getApp();

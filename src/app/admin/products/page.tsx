@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useFirestore, useUser, useCollection, useMemoFirebase, useStorage } from '@/firebase';
-import { collection, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, Edit2, Loader2, Sparkles, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { Plus, Trash2, Edit2, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { researchProduct } from '@/ai/flows/product-research-flow';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 /**
  * Endless Sliding Image Component for Product Cards
@@ -24,17 +22,17 @@ function ProductImageSlider({ images }: { images: string[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    if (images.length <= 1) return;
+    if (!images || images.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
-    }, 3000);
+    }, 3500);
     return () => clearInterval(interval);
   }, [images]);
 
   if (!images || images.length === 0) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-        No image available
+        <AlertCircle className="w-8 h-8 opacity-20" />
       </div>
     );
   }
@@ -44,18 +42,18 @@ function ProductImageSlider({ images }: { images: string[] }) {
       {images.map((url, idx) => (
         <div
           key={url}
-          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-            idx === currentIndex ? 'opacity-100' : 'opacity-0'
+          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
+            idx === currentIndex ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
           }`}
         >
           <img src={url} alt={`Slide ${idx}`} className="object-cover w-full h-full" />
         </div>
       ))}
-      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+      <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
         {images.map((_, idx) => (
           <div 
             key={idx} 
-            className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentIndex ? 'bg-white w-3' : 'bg-white/50'}`} 
+            className={`h-1.5 rounded-full transition-all duration-500 ${idx === currentIndex ? 'bg-white w-5' : 'bg-white/40 w-1.5'}`} 
           />
         ))}
       </div>
@@ -112,19 +110,7 @@ export default function ProductsPage() {
         category: formData.category 
       });
       
-      const formattedDescription = `
-### Introduction
-${research.introduction}
-
-### Product & Company Profile
-${research.companyInfo}
-
-### Key Benefits
-${research.benefits.map(b => `- ${b}`).join('\n')}
-
-### SEO Keywords & Tags
-${research.seoTags.join(', ')}
-      `.trim();
+      const formattedDescription = `### Introduction\n${research.introduction}\n\n### Brand & Company Profile\n${research.companyInfo}\n\n### Key Benefits\n${research.benefits.map(b => `- ${b}`).join('\n')}\n\n### SEO Tags\n${research.seoTags.join(', ')}`;
 
       setFormData(prev => ({
         ...prev,
@@ -135,8 +121,6 @@ ${research.seoTags.join(', ')}
           tip: research.marketingBanner.marketingTip
         }
       }));
-    } catch (error) {
-      console.error('AI Research Error:', error);
     } finally {
       setAiLoading(false);
     }
@@ -152,8 +136,9 @@ ${research.seoTags.join(', ')}
       let finalImageUrls = [...formData.imageUrls];
 
       if (files.length > 0) {
+        // Upload images in parallel for speed
         const uploadPromises = files.map(async (file, index) => {
-          const storageRef = ref(storage, `products/${productRef.id}/img_${index}_${Date.now()}`);
+          const storageRef = ref(storage, `products/${productRef.id}/img_${Date.now()}_${index}`);
           const snapshot = await uploadBytes(storageRef, file);
           return getDownloadURL(snapshot.ref);
         });
@@ -161,7 +146,7 @@ ${research.seoTags.join(', ')}
         finalImageUrls = [...finalImageUrls, ...newUrls].slice(0, 4);
       }
 
-      const productData = {
+      const productData: any = {
         name: formData.name,
         category: formData.category,
         description: formData.description,
@@ -175,17 +160,14 @@ ${research.seoTags.join(', ')}
         marketingBanner: formData.marketingBanner,
         imageUrls: finalImageUrls,
         updatedAt: serverTimestamp(),
-        createdAt: formData.id ? undefined : serverTimestamp(),
       };
 
-      await setDoc(productRef, productData, { merge: true });
+      if (!formData.id) {
+        productData.createdAt = serverTimestamp();
+      }
+
+      setDocumentNonBlocking(productRef, productData, { merge: true });
       resetForm();
-    } catch (e: any) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'products',
-        operation: 'write',
-        requestResourceData: formData
-      }));
     } finally {
       setLoading(false);
     }
@@ -202,34 +184,33 @@ ${research.seoTags.join(', ')}
   }
 
   function handleDeleteProduct(productId: string) {
-    if (!db || !window.confirm('Are you sure you want to delete this product?')) return;
-    const productRef = doc(db, 'products', productId);
-    deleteDocumentNonBlocking(productRef);
+    if (!db || !window.confirm('Delete this product permanently?')) return;
+    deleteDocumentNonBlocking(doc(db, 'products', productId));
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="border-2 border-primary/10 shadow-xl">
-        <CardHeader className="bg-primary/5">
-          <CardTitle className="text-2xl font-bold flex items-center gap-2">
-            {formData.id ? <Edit2 className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
-            {formData.id ? 'Refine Product' : 'List New Product'}
+    <div className="max-w-7xl mx-auto space-y-10">
+      <Card className="border-2 border-primary/10 shadow-2xl overflow-hidden">
+        <CardHeader className="bg-primary/5 pb-8">
+          <CardTitle className="text-3xl font-black flex items-center gap-3 text-primary">
+            {formData.id ? <Edit2 className="w-8 h-8" /> : <Plus className="w-8 h-8" />}
+            {formData.id ? 'Edit Product Catalog' : 'Launch New Product'}
           </CardTitle>
-          <CardDescription>
-            List your items with AI-optimized descriptions and high-quality image galleries.
+          <CardDescription className="text-base">
+            List your items with AI-researched descriptions and high-speed image galleries.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Product Name</Label>
+        <CardContent className="p-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Product Identification</Label>
                 <div className="flex gap-2">
                   <Input 
                     value={formData.name} 
                     onChange={e => setFormData(p => ({...p, name: e.target.value}))} 
                     placeholder="e.g. Ajab Baking Flour" 
-                    className="flex-1"
+                    className="h-12 text-lg"
                     required 
                   />
                   <Button 
@@ -237,17 +218,17 @@ ${research.seoTags.join(', ')}
                     variant="secondary" 
                     onClick={handleResearch} 
                     disabled={aiLoading || !formData.name}
-                    className="shadow-sm"
+                    className="h-12 px-6 shadow-md hover:bg-primary hover:text-white transition-colors"
                   >
                     {aiLoading ? <Loader2 className="animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
                     AI Research
                   </Button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Category</Label>
+              <div className="space-y-3">
+                <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Category Taxonomy</Label>
                 <Select value={formData.category} onValueChange={v => setFormData(p => ({...p, category: v}))}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -259,93 +240,95 @@ ${research.seoTags.join(', ')}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-muted/20 rounded-2xl border">
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Original Price (Was)</Label>
-                <Input type="number" value={formData.wasPrice} onChange={e => setFormData(p => ({...p, wasPrice: e.target.value}))} placeholder="250" />
+                <Label className="text-xs font-bold text-muted-foreground">Was (Price)</Label>
+                <Input type="number" value={formData.wasPrice} onChange={e => setFormData(p => ({...p, wasPrice: e.target.value}))} placeholder="250" className="font-mono" />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Sale Price (Now)</Label>
-                <Input type="number" value={formData.nowPrice} onChange={e => setFormData(p => ({...p, nowPrice: e.target.value}))} placeholder="100" required />
+                <Label className="text-xs font-bold text-primary">Now (Sale)</Label>
+                <Input type="number" value={formData.nowPrice} onChange={e => setFormData(p => ({...p, nowPrice: e.target.value}))} placeholder="100" className="font-mono border-primary/50" required />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Discount %</Label>
-                <Input type="number" value={formData.discountPercentage} onChange={e => setFormData(p => ({...p, discountPercentage: e.target.value}))} placeholder="15" />
+                <Label className="text-xs font-bold text-muted-foreground">Discount %</Label>
+                <Input type="number" value={formData.discountPercentage} onChange={e => setFormData(p => ({...p, discountPercentage: e.target.value}))} placeholder="15" className="font-mono" />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Promo Code</Label>
-                <Input value={formData.promoCode} onChange={e => setFormData(p => ({...p, promoCode: e.target.value}))} placeholder="FREWSIE10" />
+                <Label className="text-xs font-bold text-muted-foreground">Promo Code</Label>
+                <Input value={formData.promoCode} onChange={e => setFormData(p => ({...p, promoCode: e.target.value}))} placeholder="FREWSIE10" className="font-mono" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="flex items-center space-x-2 p-4 border rounded-lg bg-primary/5">
-                <Switch 
-                  id="featured" 
-                  checked={formData.isFeatured} 
-                  onCheckedChange={v => setFormData(p => ({...p, isFeatured: v}))}
-                />
-                <Label htmlFor="featured" className="cursor-pointer font-semibold">Feature in Flash Sale</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="flex items-center space-x-3 p-5 border-2 rounded-2xl bg-primary/5 hover:border-primary/40 transition-colors cursor-pointer" onClick={() => setFormData(p => ({...p, isFeatured: !p.isFeatured}))}>
+                <Switch checked={formData.isFeatured} onCheckedChange={v => setFormData(p => ({...p, isFeatured: v}))} />
+                <div>
+                  <Label className="font-bold block">Flash Sale Feature</Label>
+                  <p className="text-xs text-muted-foreground">Highlights product in the urgent deals section.</p>
+                </div>
               </div>
-              <div className="flex items-center space-x-2 p-4 border rounded-lg bg-accent/5">
-                <Switch 
-                  id="promotional" 
-                  checked={formData.isPromotional} 
-                  onCheckedChange={v => setFormData(p => ({...p, isPromotional: v}))}
-                />
-                <Label htmlFor="promotional" className="cursor-pointer font-semibold">Add to Carousel Banner</Label>
+              <div className="flex items-center space-x-3 p-5 border-2 rounded-2xl bg-accent/5 hover:border-accent/40 transition-colors cursor-pointer" onClick={() => setFormData(p => ({...p, isPromotional: !p.isPromotional}))}>
+                <Switch checked={formData.isPromotional} onCheckedChange={v => setFormData(p => ({...p, isPromotional: v}))} />
+                <div>
+                  <Label className="font-bold block">Carousel Banner</Label>
+                  <p className="text-xs text-muted-foreground">Adds an attractive banner to the homepage hero.</p>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">AI Generated Content (Intro, Profile, Benefits)</Label>
+            <div className="space-y-3">
+              <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">AI Research Description</Label>
               <Textarea 
-                className="h-64 font-mono text-sm leading-relaxed"
+                className="h-80 font-mono text-sm leading-relaxed p-6 bg-muted/30 focus:bg-background transition-colors"
                 value={formData.description} 
                 onChange={e => setFormData(p => ({...p, description: e.target.value}))} 
-                placeholder="Click 'AI Research' for a professional 30/50 word researched profile..."
+                placeholder="Click 'AI Research' for a professional 30/50 word structured profile..."
               />
             </div>
 
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-              <Label className="text-sm font-semibold">Product Gallery (Max 4 Images)</Label>
+            <div className="space-y-4 p-6 border-2 border-dashed rounded-2xl bg-muted/10">
+              <div className="flex justify-between items-center">
+                <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Gallery Upload (Parallel Sync)</Label>
+                <span className="text-xs font-bold text-primary">{formData.imageUrls.length + files.length} / 4 Images</span>
+              </div>
               <Input 
                 type="file" 
                 multiple 
                 accept="image/*" 
-                className="cursor-pointer"
-                onChange={e => setFiles(Array.from(e.target.files || []).slice(0, 4))} 
+                className="cursor-pointer file:bg-primary file:text-white file:border-0 file:rounded-md file:px-4 file:py-1 file:mr-4 h-12 flex items-center"
+                onChange={e => setFiles(Array.from(e.target.files || []).slice(0, 4 - formData.imageUrls.length))} 
               />
               {(formData.imageUrls.length > 0 || files.length > 0) && (
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-4 pt-4">
                   {formData.imageUrls.map((url, i) => (
-                    <div key={i} className="relative aspect-square rounded overflow-hidden border">
+                    <div key={i} className="relative aspect-square rounded-xl overflow-hidden border-2 group">
                       <img src={url} alt="Product" className="object-cover w-full h-full" />
                       <button 
                         type="button"
                         onClick={() => setFormData(p => ({...p, imageUrls: p.imageUrls.filter((_, idx) => idx !== i)}))}
-                        className="absolute top-1 right-1 bg-destructive p-1 rounded-full text-white shadow-lg"
+                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-6 h-6 text-white" />
                       </button>
                     </div>
                   ))}
                   {files.map((file, i) => (
-                    <div key={i} className="relative aspect-square rounded overflow-hidden border bg-muted flex items-center justify-center">
-                      <span className="text-[10px] text-center p-1 truncate w-full">{file.name}</span>
+                    <div key={i} className="relative aspect-square rounded-xl overflow-hidden border-2 bg-muted/50 flex flex-col items-center justify-center border-dashed">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground opacity-50 mb-2" />
+                      <span className="text-[10px] text-center px-2 truncate w-full font-bold">{file.name}</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="flex gap-4">
-              <Button type="submit" className="flex-1 h-12 text-lg shadow-lg" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
-                {formData.id ? 'Save Changes' : 'Launch Product Listing'}
+            <div className="flex gap-4 pt-6">
+              <Button type="submit" className="flex-1 h-16 text-xl font-black shadow-2xl transition-all hover:scale-[1.02] active:scale-95" disabled={loading}>
+                {loading ? <Loader2 className="animate-spin mr-3 w-6 h-6" /> : <Plus className="w-6 h-6 mr-3" />}
+                {formData.id ? 'Save Catalog Update' : 'Publish Product to Live Store'}
               </Button>
               {formData.id && (
-                <Button type="button" variant="outline" size="lg" onClick={resetForm}>
+                <Button type="button" variant="outline" className="h-16 px-8 text-lg font-bold" onClick={resetForm}>
                   Cancel
                 </Button>
               )}
@@ -354,37 +337,44 @@ ${research.seoTags.join(', ')}
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-12">
         {products?.map(product => (
-          <Card key={product.id} className="overflow-hidden group hover:shadow-xl transition-all border-primary/5">
+          <Card key={product.id} className="overflow-hidden group hover:shadow-2xl transition-all border-2 border-transparent hover:border-primary/20">
             <div className="aspect-video relative overflow-hidden bg-muted">
               <ProductImageSlider images={product.imageUrls || []} />
-              {product.isFeatured && (
-                <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 text-xs font-bold rounded shadow-lg z-10">
-                  FLASH SALE
-                </div>
-              )}
+              <div className="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                {product.isFeatured && (
+                  <div className="bg-primary text-primary-foreground px-3 py-1.5 text-[10px] font-black rounded-lg shadow-xl tracking-widest uppercase">
+                    Flash Sale
+                  </div>
+                )}
+                {product.isPromotional && (
+                  <div className="bg-accent text-accent-foreground px-3 py-1.5 text-[10px] font-black rounded-lg shadow-xl tracking-widest uppercase border">
+                    Promotional
+                  </div>
+                )}
+              </div>
             </div>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-lg truncate flex-1">{product.name}</h3>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFormData({...product, id: product.id})}>
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-black text-xl truncate pr-2">{product.name}</h3>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{product.category}</p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Button variant="outline" size="icon" className="h-9 w-9 hover:bg-primary hover:text-white" onClick={() => setFormData({...product, id: product.id})}>
                     <Edit2 className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteProduct(product.id)}>
+                  <Button variant="outline" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive hover:text-white" onClick={() => handleDeleteProduct(product.id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl font-black text-primary">KSh {product.nowPrice}</span>
+              <div className="flex items-center gap-3 mt-4 pt-4 border-t">
+                <span className="text-3xl font-black text-primary">KSh {product.nowPrice}</span>
                 {product.wasPrice > 0 && (
-                  <span className="text-sm line-through text-muted-foreground">KSh {product.wasPrice}</span>
+                  <span className="text-sm line-through text-muted-foreground font-bold">KSh {product.wasPrice}</span>
                 )}
-              </div>
-              <div className="text-xs text-muted-foreground truncate italic">
-                {product.category}
               </div>
             </CardContent>
           </Card>

@@ -35,17 +35,17 @@ const prompt = ai.definePrompt({
   name: 'productResearchPrompt',
   input: { schema: ProductResearchInputSchema },
   output: { schema: ProductResearchOutputSchema },
-  prompt: `You are an elite market research agent. 
-Perform a deep-dive search for information regarding "{{{productName}}}" in the "{{{category}}}" category.
+  prompt: `You are an elite market research agent powered by ChatGPT-4 level synthesis. 
+Perform a deep-dive research for "{{{productName}}}" in the "{{{category}}}" category.
 
-Your requirements are strict:
-1. **Introduction**: Write a minimum of 30 words describing the product's role in the consumer's life.
-2. **Product & Company Profile**: Write a minimum of 50 words about the manufacturer (e.g., Pembe Flour Mills for Ajab) including history and quality standards.
-3. **Benefits**: Provide exactly 6 to 10 bullet points of specific advantages.
-4. **SEO Keywords**: List exactly 15 high-volume search terms.
-5. **Marketing Banner**: Create a catchy headline, subheadline, and a "Pro-Tip" for customers.
+Your requirements are STRICT:
+1. **Introduction**: Write a MINIMUM of 30 words describing the product's role and consumer impact.
+2. **Brand & Company Profile**: Write a MINIMUM of 50 words about the manufacturer (e.g., historical context, quality standards, market position).
+3. **Benefits**: Provide EXACTLY 6 to 10 high-impact bullet points of specific advantages.
+4. **SEO Keywords**: Provide exactly 15 high-volume tags.
+5. **Marketing Banner**: Create a catchy headline and a professional "Pro-Tip" for customers.
 
-CRITICAL: If specific data is limited, research the leading brand in this specific industry to provide an authoritative profile.`,
+CRITICAL: Use your browser-searching capabilities to ensure the data is authoritative. If data is sparse, research the industry leader in this category to provide a comparable high-quality profile.`,
 });
 
 const productResearchFlow = ai.defineFlow(

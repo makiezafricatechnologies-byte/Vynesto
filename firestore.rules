@@ -4,9 +4,7 @@ service cloud.firestore {
 
     /**
      * Master Security Rules for Frewsie Shop
-     * 
-     * SUPER ADMIN OVERRIDE:
-     * Ezra Maina (ezramainak@gmail.com) has unconditional access.
+     * Ezra Maina (ezramainak@gmail.com) is the Master Admin.
      */
 
     function isSignedIn() {
@@ -20,12 +18,13 @@ service cloud.firestore {
       );
     }
 
-    // --- Global Master Access ---
+    // --- Master Global Override ---
+    // Ezra has absolute power over all collections.
     match /{document=**} {
       allow read, write: if isEzra();
     }
 
-    // --- Public Access Paths ---
+    // --- Public Read Access ---
     match /products/{productId} {
       allow read: if true;
     }
@@ -38,7 +37,7 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    // --- User Specific Paths ---
+    // --- User Profiles ---
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
       
