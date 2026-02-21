@@ -14,7 +14,7 @@ export type FirebaseServices = {
 };
 
 /**
- * Robust Firebase initialization for Next.js 15.
+ * Robust Firebase initialization for Next.js.
  */
 export function initializeFirebase(): FirebaseServices {
   let app: FirebaseApp;
@@ -40,7 +40,7 @@ export * from './non-blocking-updates';
 export * from './errors';
 export * from './error-emitter';
 
-// Custom hook to use storage
+// Helper hook for storage
 import { useFirebase } from './provider';
 export const useStorage = () => {
   const { firebaseApp } = useFirebase();

@@ -39,7 +39,7 @@ const prompt = ai.definePrompt({
   name: 'productResearchPrompt',
   input: { schema: ProductResearchInputSchema },
   output: { schema: ProductResearchOutputSchema },
-  prompt: `You are an elite market research agent. Your task is to perform deep-dive research for "{{{productName}}}" in the "{{{category}}}" category.
+  prompt: `You are an elite market research agent with the intelligence of ChatGPT Plus. Your task is to perform deep-dive research for "{{{productName}}}" in the "{{{category}}}" category.
 
 Your requirements are EXTREMELY STRICT:
 1. **Introduction**: Write a MINIMUM of 30 words describing the product's role, impact, and why consumers love it.

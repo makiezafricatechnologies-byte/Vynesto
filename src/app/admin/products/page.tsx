@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, Edit2, Loader2, Sparkles, AlertCircle, ShoppingBag } from 'lucide-react';
+import { Plus, Trash2, Edit2, Loader2, Sparkles, AlertCircle, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { researchProduct } from '@/ai/flows/product-research-flow';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -25,7 +25,7 @@ function ProductImageSlider({ images }: { images: string[] }) {
     if (!images || images.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
-    }, 4000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [images]);
 
@@ -42,7 +42,7 @@ function ProductImageSlider({ images }: { images: string[] }) {
       {images.map((url, idx) => (
         <div
           key={url}
-          className={`absolute inset-0 transition-opacity duration-1000 ${
+          className={`absolute inset-0 transition-opacity duration-700 ${
             idx === currentIndex ? 'opacity-100' : 'opacity-0'
           }`}
         >
@@ -97,11 +97,9 @@ export default function ProductsPage() {
         category: formData.category 
       });
       
-      const formattedDescription = `### Introduction\n${research.introduction}\n\n### Brand & Company Profile\n${research.companyInfo}\n\n### Key Benefits\n${research.benefits.map(b => `- ${b}`).join('\n')}\n\n### SEO Tags\n${research.seoTags.join(', ')}`;
+      const formattedDescription = `### ${research.marketingBanner.headline}\n${research.marketingBanner.subheadline}\n\n**Introduction**\n${research.introduction}\n\n**Brand & Company Profile**\n${research.companyInfo}\n\n**Key Benefits**\n${research.benefits.map(b => `• ${b}`).join('\n')}\n\n**SEO Keywords**\n${research.seoTags.join(', ')}\n\n**Pro-Tip**: ${research.marketingBanner.marketingTip}`;
 
       setFormData(prev => ({ ...prev, description: formattedDescription }));
-    } catch (error) {
-      console.error('AI Research Error:', error);
     } finally {
       setAiLoading(false);
     }
@@ -117,7 +115,7 @@ export default function ProductsPage() {
       let finalImageUrls = [...formData.imageUrls];
 
       if (files.length > 0) {
-        // Parallel sync upload for images
+        // Parallel sync upload for maximum speed
         const uploadPromises = files.map(async (file, index) => {
           const storageRef = ref(storage, `products/${productRef.id}/img_${Date.now()}_${index}`);
           const snapshot = await uploadBytes(storageRef, file);
@@ -169,12 +167,12 @@ export default function ProductsPage() {
           <ShoppingBag className="w-8 h-8 text-primary" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Product Catalog</h1>
-          <p className="text-muted-foreground">List items with elite AI research and parallel sync.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Elite Product Catalog</h1>
+          <p className="text-muted-foreground">Manage your superapp inventory with AI research and parallel sync.</p>
         </div>
       </div>
 
-      <Card className="border-2 shadow-xl overflow-hidden">
+      <Card className="border-2 shadow-2xl overflow-hidden">
         <CardContent className="p-8">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -184,17 +182,18 @@ export default function ProductsPage() {
                   <Input 
                     value={formData.name} 
                     onChange={e => setFormData(p => ({...p, name: e.target.value}))} 
-                    placeholder="e.g. Ajab Baking Flour" 
+                    placeholder="e.g. Premium Ajab Baking Flour" 
                     required 
+                    className="h-12"
                   />
                   <Button 
                     type="button" 
                     variant="secondary" 
                     onClick={handleResearch} 
                     disabled={aiLoading || !formData.name}
-                    className="shrink-0"
+                    className="h-12 px-6"
                   >
-                    {aiLoading ? <Loader2 className="animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                    {aiLoading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
                     AI Research
                   </Button>
                 </div>
@@ -202,7 +201,7 @@ export default function ProductsPage() {
               <div className="space-y-2">
                 <Label>Category</Label>
                 <Select value={formData.category} onValueChange={v => setFormData(p => ({...p, category: v}))}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -217,75 +216,83 @@ export default function ProductsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="space-y-2">
                 <Label>Was Price (KSh)</Label>
-                <Input type="number" value={formData.wasPrice} onChange={e => setFormData(p => ({...p, wasPrice: e.target.value}))} placeholder="250" />
+                <Input type="number" value={formData.wasPrice} onChange={e => setFormData(p => ({...p, wasPrice: e.target.value}))} placeholder="250" className="h-11" />
               </div>
               <div className="space-y-2">
                 <Label>Now Price (KSh)</Label>
-                <Input type="number" value={formData.nowPrice} onChange={e => setFormData(p => ({...p, nowPrice: e.target.value}))} placeholder="100" required />
+                <Input type="number" value={formData.nowPrice} onChange={e => setFormData(p => ({...p, nowPrice: e.target.value}))} placeholder="100" required className="h-11" />
               </div>
               <div className="space-y-2">
                 <Label>Discount %</Label>
-                <Input type="number" value={formData.discountPercentage} onChange={e => setFormData(p => ({...p, discountPercentage: e.target.value}))} placeholder="15" />
+                <Input type="number" value={formData.discountPercentage} onChange={e => setFormData(p => ({...p, discountPercentage: e.target.value}))} placeholder="15" className="h-11" />
               </div>
               <div className="space-y-2">
                 <Label>Promo Code</Label>
-                <Input value={formData.promoCode} onChange={e => setFormData(p => ({...p, promoCode: e.target.value}))} placeholder="FREWSIE10" />
+                <Input value={formData.promoCode} onChange={e => setFormData(p => ({...p, promoCode: e.target.value}))} placeholder="FREWSIE10" className="h-11" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="flex items-center justify-between p-4 border rounded-xl bg-muted/30">
-                <Label className="cursor-pointer">Flash Sale Feature</Label>
+               <div className="flex items-center justify-between p-5 border-2 rounded-2xl bg-muted/30">
+                <div className="space-y-0.5">
+                  <Label className="text-base font-bold">Flash Sale</Label>
+                  <p className="text-xs text-muted-foreground">Display in urgent countdown section</p>
+                </div>
                 <Switch checked={formData.isFeatured} onCheckedChange={v => setFormData(p => ({...p, isFeatured: v}))} />
               </div>
-              <div className="flex items-center justify-between p-4 border rounded-xl bg-muted/30">
-                <Label className="cursor-pointer">Carousel Banner</Label>
+              <div className="flex items-center justify-between p-5 border-2 rounded-2xl bg-muted/30">
+                <div className="space-y-0.5">
+                  <Label className="text-base font-bold">Banner Feature</Label>
+                  <p className="text-xs text-muted-foreground">Highlight in home page carousel</p>
+                </div>
                 <Switch checked={formData.isPromotional} onCheckedChange={v => setFormData(p => ({...p, isPromotional: v}))} />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Description (Professional AI Output)</Label>
+              <Label className="flex items-center gap-2">
+                Professional Description <span className="text-xs font-normal text-muted-foreground">(AI Optimized 30/50 Words)</span>
+              </Label>
               <Textarea 
-                className="h-72 font-mono text-sm leading-relaxed"
+                className="h-80 font-mono text-sm leading-relaxed p-6"
                 value={formData.description} 
                 onChange={e => setFormData(p => ({...p, description: e.target.value}))} 
-                placeholder="Click 'AI Research' for elite 30/50 word profile..."
+                placeholder="Click 'AI Research' for elite market analysis..."
               />
             </div>
 
             <div className="space-y-4">
-              <Label>Gallery Upload (Max 4)</Label>
+              <Label>Gallery Upload (Parallel Sync - Max 4)</Label>
               <Input 
                 type="file" 
                 multiple 
                 accept="image/*" 
                 onChange={e => setFiles(Array.from(e.target.files || []).slice(0, 4))} 
-                className="cursor-pointer"
+                className="cursor-pointer file:bg-primary file:text-primary-foreground h-12"
               />
               <div className="grid grid-cols-4 gap-4">
                 {formData.imageUrls.map((url, i) => (
-                  <div key={i} className="aspect-square rounded-lg overflow-hidden border-2 relative group">
+                  <div key={i} className="aspect-square rounded-2xl overflow-hidden border-2 relative group shadow-sm">
                     <img src={url} alt="Product" className="object-cover w-full h-full" />
                     <button 
                       type="button"
                       onClick={() => setFormData(p => ({...p, imageUrls: p.imageUrls.filter((_, idx) => idx !== i)}))}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <Trash2 className="w-6 h-6 text-white" />
+                      <Trash2 className="w-8 h-8 text-white" />
                     </button>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <Button type="submit" className="flex-1 h-14 text-lg font-bold" disabled={loading}>
-                {loading && <Loader2 className="animate-spin mr-2" />}
-                {formData.id ? 'Update Listing' : 'Publish Product'}
+            <div className="flex gap-4 pt-4">
+              <Button type="submit" className="flex-1 h-14 text-lg font-bold shadow-lg" disabled={loading}>
+                {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
+                {formData.id ? 'Sync Product Updates' : 'Publish to Superapp'}
               </Button>
               {formData.id && (
-                <Button type="button" variant="outline" className="h-14 px-8" onClick={resetForm}>Cancel</Button>
+                <Button type="button" variant="outline" className="h-14 px-8 border-2" onClick={resetForm}>Discard Edit</Button>
               )}
             </div>
           </form>
@@ -294,42 +301,42 @@ export default function ProductsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
         {products?.map(product => (
-          <Card key={product.id} className="overflow-hidden group hover:shadow-2xl transition-all border-2">
-            <div className="aspect-video relative overflow-hidden bg-muted">
+          <Card key={product.id} className="overflow-hidden group hover:shadow-2xl transition-all border-2 rounded-3xl">
+            <div className="aspect-[4/3] relative overflow-hidden bg-muted">
               <ProductImageSlider images={product.imageUrls || []} />
               {product.isFeatured && (
-                <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                  FLASH SALE
+                <div className="absolute top-4 left-4 bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-[10px] font-black tracking-tighter shadow-xl z-10">
+                  FLASH SALE LIVE
                 </div>
               )}
             </div>
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-bold text-xl tracking-tight">{product.name}</h3>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{product.category}</p>
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-1">{product.category}</p>
+                  <h3 className="font-bold text-xl tracking-tight leading-none mb-1">{product.name}</h3>
+                  <div className="flex items-baseline gap-2 mt-2">
+                    <span className="text-2xl font-black text-foreground">KSh {product.nowPrice}</span>
+                    {product.wasPrice > 0 && (
+                      <span className="text-sm line-through text-muted-foreground">KSh {product.wasPrice}</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => {
+                <div className="flex flex-col gap-2">
+                  <Button variant="secondary" size="icon" className="h-10 w-10 rounded-xl" onClick={() => {
                     setFormData({...product, id: product.id, wasPrice: String(product.wasPrice), nowPrice: String(product.nowPrice)});
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}>
                     <Edit2 className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-9 w-9 text-destructive border-destructive/20 hover:bg-destructive/10" onClick={() => deleteDocumentNonBlocking(doc(db, 'products', product.id))}>
+                  <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/10" onClick={() => deleteDocumentNonBlocking(doc(db, 'products', product.id))}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-              <div className="flex items-baseline gap-3">
-                <span className="text-2xl font-black text-primary">KSh {product.nowPrice}</span>
-                {product.wasPrice > 0 && (
-                  <span className="text-sm line-through text-muted-foreground font-medium">KSh {product.wasPrice}</span>
-                )}
-              </div>
               {product.discountPercentage > 0 && (
-                <div className="mt-2 text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded inline-block">
-                  SAVE {product.discountPercentage}%
+                <div className="text-[10px] font-black text-green-600 bg-green-50 px-2.5 py-1 rounded-lg inline-flex items-center">
+                  <Sparkles className="w-3 h-3 mr-1" /> SAVE {product.discountPercentage}%
                 </div>
               )}
             </CardContent>
