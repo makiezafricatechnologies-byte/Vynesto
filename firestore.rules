@@ -3,49 +3,116 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * Master Security Rules for Frewsie Shop
-     * Ezra Maina (ezramainak@gmail.com) is the Master Admin.
+     * CORE PHILOSOPHY:
+     * This ruleset implements a robust, owner-centric security model with administrative overrides 
+     * managed via Database Access Control (DBAC). It prioritizes "Authorization Independence," 
+     * meaning security decisions are primarily made based on the document path and the 
+     * user's authenticated UID, minimizing expensive cross-document lookups.
+     *
+     * DATA STRUCTURE:
+     * - Public Catalog: /categories and /products are globally readable.
+     * - Private User Data: /users/{userId} and /users/{userId}/orders/{orderId} are restricted 
+     *   to the specific user.
+     * - Administrative Control: /admin_roles acts as a registry for users with elevated privileges.
+     *
+     * KEY SECURITY DECISIONS:
+     * - Denormalization: The `userId` is enforced both in the path and within the document 
+     *   body for Orders to ensure relational integrity and fast rule evaluation.
+     * - Prototyping Flexibility: Rules do not enforce strict data types or field presence 
+     *   for content, allowing for rapid front-end iteration while maintaining strict access control.
+     * - Structural Segregation: Public and private data are separated into top-level collections 
+     *   to prevent accidental data exposure through complex query filters.
      */
 
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    /** @description Checks if the user is authenticated with Firebase Auth. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isEzra() {
-      return isSignedIn() && (
-        request.auth.token.email == 'ezramainak@gmail.com' || 
-        request.auth.uid == 'IELPepYQ6FTIWJ1ZWrDJFQFhn5C3'
-      );
+    /** @description Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- Master Global Override ---
-    // Ezra has absolute power over all collections.
-    match /{document=**} {
-      allow read, write: if isEzra();
+    /** 
+     * @description Checks if the user is an owner and the document exists. 
+     * Used for safe updates and deletes.
+     */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
     }
 
-    // --- Public Read Access ---
-    match /products/{productId} {
-      allow read: if true;
+    /** @description Checks if the authenticated user is registered in the admin_roles collection. */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admin_roles/$(request.auth.uid));
     }
 
-    match /categories/{categoryId} {
-      allow read: if true;
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for managing administrative roles via a dedicated registry.
+     * @path /admin_roles/{adminUid}
+     * @allow (get) If the user is an admin.
+     * @deny (all) If the user is a standard customer.
+     * @principle Role-Based Access Control (RBAC) via DBAC registry.
+     */
+    match /admin_roles/{adminUid} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
-    // Specific match for business config with Ezra override
-    match /business/{configId} {
-      allow read: if true;
-      allow write: if isEzra();
-    }
-
-    // --- User Profiles ---
+    /**
+     * @description Manages individual user profiles. Users can only access their own profile.
+     * @path /users/{userId}
+     * @allow (create) If the authenticated UID matches the path and the document's internal ID.
+     * @deny (read) If a user tries to look up another user's profile.
+     * @principle Path-based ownership and self-creation.
+     */
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
-      
-      match /orders/{orderId} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
-      }
+      allow get, list: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.id == userId;
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Publicly readable product categories. Writes restricted to administrators.
+     * @path /categories/{categoryId}
+     * @allow (list) For all users, including anonymous.
+     * @deny (create) For any non-admin user.
+     * @principle Structural segregation of public global data.
+     */
+    match /categories/{categoryId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Publicly readable products. Writes restricted to administrators.
+     * @path /products/{productId}
+     * @allow (get) For all users, including anonymous.
+     * @deny (update) For any non-admin user.
+     * @principle Structural segregation of public global data.
+     */
+    match /products/{productId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages customer orders nested under the user's path for isolation.
+     * @path /users/{userId}/orders/{orderId}
+     * @allow (create) If the user is the owner and provides their ID in the data.
+     * @deny (list) If a user tries to query orders outside of their own user path.
+     * @principle Hierarchical ownership and relational integrity enforcement.
+     */
+    match /users/{userId}/orders/{orderId} {
+      allow get, list: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.userId == userId;
+      allow update: if (isExistingOwner(userId) || isAdmin()) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAdmin();
     }
   }
 }
